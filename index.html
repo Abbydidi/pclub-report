@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.5 system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>幣聖課分層優化提案</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: one reading column; summary → data (where volume sits) → competitor gap table → six proposals as numbered cards → decision checklist for the boss */
+:root{
+  --bg:#f3f5f7; --paper:#ffffff; --ink:#152030; --muted:#5a6676; --hair:#dce2e9; --soft:#eaeef2;
+  --bs:#1d5fae; --kb:#1f7a68; --lb:#c2541a; --mx:#6b4bb8; --vol:#1d5fae; --ppl:#9aa7b6; --dec:#b8650f; --yes:#1d7a4f; --no:#a23b3b;
+  --sans:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10151c; --paper:#18202a; --ink:#e6ebf1; --muted:#98a4b3; --hair:#2a3440; --soft:#202a35;
+  --bs:#6aa7f0; --kb:#4cc2a6; --lb:#f08b4c; --mx:#a78bfa; --vol:#6aa7f0; --ppl:#5d6b7c; --dec:#f0a54a; --yes:#4cc28a; --no:#f08080; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10151c; --paper:#18202a; --ink:#e6ebf1; --muted:#98a4b3; --hair:#2a3440; --soft:#202a35;
+  --bs:#6aa7f0; --kb:#4cc2a6; --lb:#f08b4c; --mx:#a78bfa; --vol:#6aa7f0; --ppl:#5d6b7c; --dec:#f0a54a; --yes:#4cc28a; --no:#f08080; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.75 var(--sans)}
+.wrap{max-width:1040px;margin:0 auto;padding-block:40px 72px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:56px}
+h1,h2,h3{margin:0;text-wrap:balance;line-height:1.3}
+h1{font-size:clamp(28px,5vw,40px);font-weight:900}
+h2{font-size:22px;font-weight:900}
+h3{font-size:16px;font-weight:700}
+p{margin:0}
+ul{margin:0;padding-left:1.15em} li{margin:3px 0}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.12em;color:var(--muted)}
+.lede{font-size:17px;color:var(--muted);max-width:62ch}
+.meta{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:13px;color:var(--muted)}
+.meta a{color:var(--bs)}
+section{display:flex;flex-direction:column;gap:18px}
+.sec-head{display:flex;flex-direction:column;gap:6px}
+.note{font-size:13px;color:var(--muted)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:600}
+.panel{background:var(--paper);border:1px solid var(--hair);border-radius:10px;padding:18px}
+
+/* summary */
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.sum .panel{display:flex;flex-direction:column;gap:6px}
+.sum .k{font-size:12px;font-weight:700;letter-spacing:.06em}
+.sum .good .k{color:var(--yes)} .sum .gap .k{color:var(--no)} .sum .ask .k{color:var(--dec)}
+
+/* kpis */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--paper);border:1px solid var(--hair);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.kpi .v{font:600 26px/1.2 var(--mono);font-variant-numeric:tabular-nums}
+.kpi .l{font-size:13px;color:var(--muted)}
+.kpi.hl{border-color:var(--vol)} .kpi.hl .v{color:var(--vol)}
+
+/* distribution chart */
+.dist{display:flex;flex-direction:column;gap:10px}
+.drow{display:grid;grid-template-columns:118px 1fr;gap:12px;align-items:center}
+.drow .lab{font-size:13px;line-height:1.3}
+.drow .lab small{display:block;color:var(--muted);font-family:var(--mono);font-size:11px}
+.pair{display:flex;flex-direction:column;gap:3px}
+.b{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums}
+.b i{display:block;height:11px;border-radius:2px;min-width:2px}
+.b.p i{background:var(--ppl)} .b.v i{background:var(--vol)}
+.drow.hot .lab{font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:12px;height:10px;border-radius:2px;background:var(--c);margin-right:6px;vertical-align:-1px}
+.callouts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.callouts p{border-left:3px solid var(--vol);padding:2px 0 2px 12px}
+.callouts p.key{border-left-color:var(--no);background:color-mix(in srgb,var(--no) 9%,transparent);border-radius:0 8px 8px 0;padding:10px 14px}
+.callouts p.key b{color:var(--no)}
+.key-k{display:block;font-size:12px;font-weight:900;letter-spacing:.06em;color:var(--no)}
+.segs{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media (max-width:860px){.segs{grid-template-columns:1fr 1fr}}
+@media (max-width:420px){.segs{grid-template-columns:1fr}}
+.seg{background:var(--paper);border:1px solid var(--hair);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.seg .sn{font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.seg .sv{font-size:14px;line-height:1.3}
+.seg .sv .num{font-size:24px;margin-right:2px}
+.seg .sv small{display:block;font-size:12px;color:var(--muted)}
+.seg .avg{font-size:13px;color:var(--muted);border-top:1px solid var(--hair);padding-top:8px}
+.seg.best{border:2px solid var(--no);background:color-mix(in srgb,var(--no) 6%,var(--paper))}
+.seg.best .sv .num{color:var(--no)}
+.pick{font-size:11px;font-weight:700;padding:0 8px;border-radius:999px;background:var(--no);color:var(--paper);letter-spacing:0}
+.pickbox{background:color-mix(in srgb,var(--no) 7%,var(--paper));border:1px solid color-mix(in srgb,var(--no) 35%,transparent);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+.pickbox .key-k{font-size:13px}
+.lift{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.lift div{background:var(--paper);border:1px solid var(--hair);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.lift span{font-size:13px;color:var(--muted)}
+.lift b{font-size:20px}
+.lift small{font-size:12px;color:var(--muted)}
+.lift .hl{border:2px solid var(--no)} .lift .hl b{color:var(--no)}
+.mini{margin-top:6px;font-size:13px;border:1px solid var(--hair);border-radius:6px}
+.mini th,.mini td{padding:6px 10px}
+.mini th{white-space:nowrap;background:var(--soft);font-weight:700}
+.cellnote{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.prop>*{min-width:0}
+.feebox{min-width:0;grid-column:2;display:flex;flex-direction:column;gap:14px;margin-top:12px}
+.fees{min-width:640px}
+.fees tr.base td{color:var(--muted)}
+.fees td.pc{font-weight:700;vertical-align:middle;background:color-mix(in srgb,var(--bs) 6%,transparent)}
+.sav h4{margin:0 0 4px;font-size:13px;color:var(--bs)}
+.sav ul{font-size:14px}
+@media (max-width:560px){.feebox{grid-column:1}}
+.notices{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.notice{background:var(--paper);border:1px solid var(--hair);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.nh{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--hair);background:var(--soft)}
+.nh h3{font-size:14px;flex:1;min-width:0}
+.ng{font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;background:var(--bs);color:var(--paper);white-space:nowrap}
+.copy{font:600 12px/1 var(--sans);padding:6px 10px;border-radius:6px;border:1px solid var(--hair);background:var(--paper);color:var(--ink);cursor:pointer}
+.copy:hover{border-color:var(--bs)} .copy:focus-visible{outline:2px solid var(--bs);outline-offset:2px}
+.notice pre{margin:0;padding:14px;font:14px/1.75 var(--sans);white-space:pre-wrap;word-break:break-word;flex:1}
+.mini.assets{width:auto;min-width:320px;border:0}
+.mini.assets tr.sub td{font-weight:700;background:var(--soft)}
+.top3{background:var(--paper);border:2px solid var(--bs);border-radius:14px;padding:20px}
+.t3{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.t3>li{display:grid;grid-template-columns:36px 1fr;gap:12px;align-items:start;background:var(--bg);border-radius:10px;padding:14px;min-width:0;margin:0}
+.t3 .tn{width:36px;height:36px;border-radius:50%;background:var(--bs);color:var(--paper);font:600 17px/36px var(--mono);text-align:center}
+.t3 .tb{min-width:0;display:flex;flex-direction:column;gap:6px}
+.t3 h3{font-size:16px;text-wrap:wrap}
+.t3 h3 small{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-top:2px}
+.t3 ul{font-size:14px;list-style:disc}
+.t3 .urgent .tn{background:var(--no)}
+.t3 .due{font-size:13px;background:color-mix(in srgb,var(--no) 10%,transparent);border-left:3px solid var(--no);padding:6px 10px;border-radius:0 6px 6px 0}
+.t3 .due b{color:var(--no)}
+.toc{background:var(--paper);border:1px solid var(--hair);border-radius:12px;padding:16px 20px;display:flex;flex-direction:column;gap:8px}
+.toc ol{margin:0;padding-left:1.4em;columns:2 260px;column-gap:32px;font-size:14px}
+.toc ol li{break-inside:avoid;margin:3px 0}
+.toc ol.sub{columns:1;padding-left:1.3em;font-size:13px;list-style:decimal}
+.toc a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--hair)}
+.toc a:hover{color:var(--bs);border-color:var(--bs)}
+.toc a:focus-visible{outline:2px solid var(--bs);outline-offset:2px}
+h2[id],article[id]{scroll-margin-top:16px}
+.obs-note{background:color-mix(in srgb,var(--dec) 10%,transparent);border:1px dashed var(--dec);border-radius:8px;padding:10px 14px;font-size:14px}
+.obs-note b{color:var(--dec)}
+
+/* tables */
+.tablebox{overflow-x:auto;background:var(--paper);border:1px solid var(--hair);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:11px 14px;border-bottom:1px solid var(--hair)}
+thead th{font-size:12px;letter-spacing:.05em;color:var(--muted);font-weight:700;background:var(--soft);white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+.gaps{min-width:780px}
+.gaps td:first-child{font-weight:700;white-space:nowrap}
+.y{color:var(--yes);font-weight:700} .n{color:var(--no);font-weight:700}
+td.ours{background:color-mix(in srgb,var(--no) 7%,transparent)}
+.num-r{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ladder */
+.ladder{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.rung{background:var(--paper);border:1px solid var(--hair);border-top:4px solid var(--c);border-radius:9px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.rung .t{font-weight:900}
+.rung .g{font-size:13px;color:var(--muted)}
+.rung ul{font-size:13px}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:0 7px;border-radius:999px;background:var(--dec);color:var(--paper);vertical-align:1px;margin-left:4px}
+.tag.new{background:var(--bs)}
+@media (max-width:760px){.ladder{grid-template-columns:1fr 1fr}}
+@media (max-width:440px){.ladder{grid-template-columns:1fr}}
+
+/* tier matrix */
+.tiers{min-width:760px;table-layout:fixed}
+.tiers th:first-child{width:130px}
+.tiers thead th{font-size:15px;color:var(--ink);letter-spacing:0;border-top:4px solid var(--c,transparent);white-space:normal}
+.tiers thead th small,.tiers tbody th small{display:block;font-size:12px;font-weight:500;color:var(--muted)}
+.tiers tbody th{font-weight:700;background:var(--soft);white-space:normal}
+.tiers tr.focus td{background:color-mix(in srgb,var(--bs) 6%,transparent)}
+.tiers td{line-height:1.6}
+.newmark{display:inline-block;font-size:11px;font-weight:700;padding:0 6px;border-radius:999px;background:var(--bs);color:var(--paper);margin-left:4px;vertical-align:1px;line-height:1.6}
+.tbd{display:inline-block;font-size:11px;font-weight:700;padding:0 6px;border-radius:999px;border:1px solid var(--dec);color:var(--dec);margin-left:4px;vertical-align:1px;line-height:1.5}
+.volsteps{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px}
+.volsteps span{background:var(--paper);border:1px solid var(--hair);border-radius:7px;padding:5px 10px;font-weight:700;font-size:14px;line-height:1.35}
+.volsteps span small{display:block;font-weight:500;font-size:12px;color:var(--muted)}
+.volsteps i{font-style:normal;color:var(--muted);align-self:center}
+.volnote{font-size:13px;color:var(--muted);margin-top:8px}
+.ways{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.way{background:var(--paper);border:1px solid var(--hair);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:6px}
+.way .k{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--dec)}
+.way ul{font-size:14px}
+
+/* proposals */
+.props{display:flex;flex-direction:column;gap:18px}
+.prop{background:var(--paper);border:1px solid var(--hair);border-radius:12px;padding:20px;display:grid;grid-template-columns:44px 1fr;gap:4px 16px}
+.prop .no{grid-row:1/span 2;width:44px;height:44px;border-radius:10px;background:var(--bs);color:var(--paper);font:600 20px/44px var(--mono);text-align:center}
+.prop h3{font-size:18px;font-weight:900;align-self:center}
+.prop .body{grid-column:2;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:8px}
+.prop .blk{display:flex;flex-direction:column;gap:4px;min-width:0}
+.prop .blk h4{margin:0;font-size:12px;letter-spacing:.06em;color:var(--muted);font-weight:700}
+.prop .blk.plan h4{color:var(--bs)}
+.prop .decide{grid-column:2;margin-top:12px;background:color-mix(in srgb,var(--dec) 10%,transparent);border:1px dashed var(--dec);border-radius:8px;padding:10px 14px;font-size:14px}
+.prop .decide b{color:var(--dec)}
+@media (max-width:560px){.prop{grid-template-columns:1fr}.prop .no{grid-row:auto}.prop .body,.prop .decide{grid-column:1}}
+
+.decisions{min-width:720px}
+.decisions td.part{font-weight:700;white-space:nowrap}
+.decisions{min-width:860px}
+.decisions td:first-child{font-family:var(--mono);color:var(--muted);white-space:nowrap}
+footer{font-size:13px;color:var(--muted);border-top:1px solid var(--hair);padding-top:16px;display:flex;flex-direction:column;gap:6px}
+footer ul{padding-left:1.1em}
+</style>
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:14px">
+    <div class="eyebrow">P Club · 分層與交易刺激提案</div>
+    <h1>幣聖課分層優化提案</h1>
+    <p class="lede">用全學院 30 日交易額數據，對照酷幣盈、龍幣盈的 VIP 制度，提出 8 項可新增的做法。門檻與名額的數字列成選項，請老闆決定。</p>
+    <div class="meta">
+      <span>提案人 Ab（活動組）</span><span>產出日 2026/11/06</span>
+      <span>數據窗口 2026/10/07 – 11/05（30 天）</span>
+      <span>競品細節見 <a href="https://claude.ai/artifact/62B3fYUZqSsMPB9AUozKYY" target="_blank" rel="noopener">競品 VIP 漏斗研究</a></span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="報告大綱">
+    <div class="eyebrow">報告大綱</div>
+    <ol>
+      <li><a href="#top3">週三週會：三大重點</a></li>
+      <li><a href="#summary">先看結論</a></li>
+      <li><a href="#data">交易額集中在誰身上</a></li>
+      <li><a href="#gaps">競品有、我們沒有的機制</a></li>
+      <li><a href="#tiers">提案後：每一層開放什麼</a></li>
+      <li><a href="#proposals">8 項提案</a>
+        <ol class="sub"><li><a href="#p1">P Club 限額、淘汰、續留門檻，並開放入金直通</a></li><li><a href="#p2">入金 5,000U 直通者，先給 7 天體驗</a></li><li><a href="#p3">1v1 交易健檢</a></li><li><a href="#p4">進階課程依交易額分級解鎖</a></li><li><a href="#p5">官方 LINE 設 P Club 專區</a></li><li><a href="#p6">工具與資訊分三層開放</a></li><li><a href="#p7">P Club 社群內的吸引力，各社群定位分工</a></li><li><a href="#p8">BingX 合約手續費減免，刺激交易額</a></li></ol></li>
+      <li><a href="#notices">學員公告範例</a></li>
+      <li><a href="#decisions">老闆決策清單</a></li>
+    </ol>
+  </nav>
+
+  <section class="top3">
+    <div class="sec-head"><div class="eyebrow">週三週會報告</div><h2 id="top3">三大重點：最建議調整的方向</h2></div>
+    <ol class="t3">
+      <li><div class="tn">1</div><div class="tb"><h3>P Club 調整：限額、續留、入金直通<small>提案 1＋2</small></h3>
+        <ul><li>P Club 設席次上限，每月審核 30 日交易額，未達標淘汰</li><li>新增入口：入金 5,000U 可直接入群，先給 7 天體驗，期間交易額達標才轉正式會員</li></ul></div></li>
+      <li><div class="tn">2</div><div class="tb"><h3>建立 1v1 交易健檢<small>提案 3</small></h3>
+        <ul><li>P Club 入會送一次 1v1 健檢（帶 30 日盈虧日曆）</li><li>資產 10,000U 以上大戶每月一次，約 10 人、每月約 10 場</li></ul></div></li>
+      <li class="urgent"><div class="tn">3</div><div class="tb"><h3>課程、指標、資訊網站綁定交易額開放<small>提案 4＋6</small></h3>
+        <ul><li>新手班免費，進階課程、指標、資訊依 30 日交易額分階段解鎖</li><li>解鎖後需每個月維持交易額才能續用</li></ul>
+        <p class="due"><b>要盡快：</b>研究用的數據獵手會員只剩 16 天（約 11/25 到期），要參考酷幣盈的做法得把握時間。</p></div></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2 id="summary">先看結論</h2></div>
+    <div class="sum">
+      <div class="panel good"><div class="k">我們的強項</div><p>課程品質和軟體服務做得好；最高等級社群的服務項目也是幾家裡最多的。</p></div>
+      <div class="panel gap"><div class="k">我們的缺口</div><p>刺激交易的機制不完整。競品把課程、指標、資訊工具、社群資格都綁交易額或月交易量，我們目前沒有綁。</p></div>
+      <div class="panel"><div class="k" style="color:var(--vol)">數據重點</div><p><span class="num">0.30%</span> 的帳號貢獻 <span class="num">78%</span> 交易額。離 P Club 最近的 50 萬–500 萬只有 <span class="num">258</span> 人，100 萬以上還有 <span class="num">85</span> 位不是 P Club 會員。</p></div>
+      <div class="panel ask"><div class="k">請老闆決定</div><p>8 項提案的做法已定。P Club 席次、續留門檻、體驗期目標、資訊與課程的開放條件等細節，整理在最後的決策清單，需要老闆拍板。</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2 id="data">交易額集中在誰身上</h2><p class="note">來源：全學院 30 日交易額分層報告（pclub-system 正式資料庫＋BingX 邀請名單）。</p>
+      <p class="obs-note"><b>這一段的用途：</b>請老闆用這些人數與交易額分布，決定課程、指標、階段性開放的資訊數據，各要綁定多少 30 日交易額。門檻設在哪個區間，就能從下表看出會有多少人解鎖、多少人需要往上衝。</p></div>
+    <div class="kpis">
+      <div class="kpi"><span class="v">53,645</span><span class="l">全學院帳號（受邀總數）</span></div>
+      <div class="kpi"><span class="v">3,146</span><span class="l">30 天內有交易（5.9%）</span></div>
+      <div class="kpi"><span class="v">11.39 億</span><span class="l">30 天總交易額（USDT）</span></div>
+      <div class="kpi hl"><span class="v">160 人</span><span class="l">30 日交易額 100 萬 USDT 以上的人數，合計貢獻 78.0% 交易額</span></div>
+    </div>
+    <div class="panel dist" id="dist">
+      <div class="legend"><span style="--c:var(--ppl)">佔活躍人數</span><span style="--c:var(--vol)">佔總交易額</span></div>
+    </div>
+    <div class="sec-head" style="margin-top:8px">
+      <h3>把活躍的 3,146 人分成四段</h3>
+      <p class="note">依 30 日交易額切成四段。人數比例以 30 天內有交易的 3,146 人為分母，交易額比例以全學院 11.39 億為分母。</p>
+    </div>
+    <div class="segs">
+      <div class="seg"><div class="sn">第一段</div><h3>50 萬以下</h3>
+        <div class="sv"><span class="num">2,848</span> 人<small>佔活躍 90.5%</small></div>
+        <div class="sv"><span class="num">13.5%</span> 交易額<small>合計 1.54 億</small></div>
+        <p class="avg">人均 <span class="num">5.4 萬</span></p></div>
+      <div class="seg"><div class="sn">第二段</div><h3>50 萬～100 萬</h3>
+        <div class="sv"><span class="num">138</span> 人<small>佔活躍 4.4%</small></div>
+        <div class="sv"><span class="num">8.5%</span> 交易額<small>合計 9,691 萬</small></div>
+        <p class="avg">人均 <span class="num">70 萬</span></p></div>
+      <div class="seg best"><div class="sn">第三段<span class="pick">最適合刺激</span></div><h3>100 萬～500 萬</h3>
+        <div class="sv"><span class="num">120</span> 人<small>佔活躍 3.8%</small></div>
+        <div class="sv"><span class="num">23.0%</span> 交易額<small>合計 2.62 億</small></div>
+        <p class="avg">人均 <span class="num">218 萬</span></p></div>
+      <div class="seg best"><div class="sn">第四段<span class="pick">最適合刺激</span></div><h3>500 萬以上</h3>
+        <div class="sv"><span class="num">40</span> 人<small>佔活躍 1.3%</small></div>
+        <div class="sv"><span class="num">55.1%</span> 交易額<small>合計 6.27 億</small></div>
+        <p class="avg">人均 <span class="num">1,568 萬</span>，已全是 P Club 會員</p></div>
+    </div>
+    <p class="obs-note"><b>課程、指標、資訊怎麼開放：</b>可以直接對應這四段來設計。例如第一段開放基礎內容，第二段解鎖進階，第三段解鎖深度內容，第四段是 P Club 全開放。每段要開放哪些內容，請老闆決定。</p>
+
+    <div class="pickbox">
+      <div class="key-k">依交易額比例推算：哪一段最適合做刺激方案</div>
+      <p>假設每一段的交易額都提升 10%，全學院會多出的交易額：</p>
+      <div class="lift">
+        <div><span>第一段 50 萬以下</span><b class="num">＋1,536 萬</b><small>要推動 2,848 人，每人只多 5,392</small></div>
+        <div><span>第二段 50 萬～100 萬</span><b class="num">＋969 萬</b><small>138 人</small></div>
+        <div class="hl"><span>第三段 100 萬～500 萬</span><b class="num">＋2,616 萬</b><small>只要推動 120 人</small></div>
+        <div class="hl"><span>第四段 500 萬以上</span><b class="num">＋6,273 萬</b><small>只要推動 40 人，四段中最多</small></div>
+      </div>
+      <p><b>最適合做刺激方案的是第四段（500 萬以上，40 人）和第三段（100 萬～500 萬，120 人）。</b></p>
+      <ul>
+        <li><b>第四段：</b>40 人佔全學院 55.1% 交易額，同樣提升 10% 就多出 6,273 萬，是四段中最多的。他們已經都在 P Club，可以直接用 BingX VIP 手續費減免、每月續留門檻、1v1 健檢來刺激。</li>
+        <li><b>第三段：</b>120 人佔 23.0% 交易額，人均 218 萬，離 P Club 的 500 萬門檻最近，用「進 P Club」當目標最有吸引力。</li>
+        <li>兩段合計只有 160 人，卻佔 78.0% 交易額，可以用數據資訊、課程指標、P Club 專屬服務（例如 1v1 健檢、BingX 手續費減免）來刺激交易。</li>
+      </ul>
+      <p class="note">第二段可以當第三段的下一批候補。</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2 id="gaps">競品有、我們沒有的機制</h2><p class="note">表格可左右滑動。紅底那一欄是幣聖課目前的狀況。</p></div>
+    <div class="tablebox">
+      <table class="gaps">
+        <thead><tr><th>機制</th><th>酷幣盈</th><th>龍幣盈</th><th>幣聖課現況</th></tr></thead>
+        <tbody>
+          <tr><td>高階社群限額＋淘汰</td><td><span class="y">有</span>：菁英班限 350 人，每週日踢人補邀</td><td>未觀察到</td><td class="ours"><span class="n">沒有</span>：P Club 無名額上限</td></tr>
+          <tr><td>每月續留門檻</td><td><span class="y">有</span>：菁英班續留需 70 萬交易額</td><td>未觀察到</td><td class="ours"><span class="n">沒有</span></td></tr>
+          <tr><td>體驗期＋達標續留</td><td><span class="y">有</span>：菁英 7 天體驗，7 日內 5 萬交易額</td><td>未觀察到</td><td class="ours"><span class="n">沒有</span></td></tr>
+          <tr><td>1v1 交易健檢</td><td><span class="y">有</span>：菁英入群即預約當週一次</td><td>未觀察到</td><td class="ours"><span class="n">沒有</span></td></tr>
+          <tr><td>課程綁交易額</td><td><span class="y">有</span>：獵手高階班需 30 日 30 萬（菁英的第三階段課程）</td><td><span class="y">有</span>：龍家軍核心班需交易額 1,000U（龍幣盈的第三階段課程）</td><td class="ours"><span class="n">沒有</span></td></tr>
+          <tr><td>工具、資訊綁交易額</td><td><span class="y">有</span>：數據獵手標準版／專業版綁門檻</td><td><span class="y">有</span>：深度資訊、AI 訊號需交易額 1 萬</td><td class="ours"><span class="n">沒有</span></td></tr>
+          <tr><td>高階社群專屬資訊</td><td><span class="y">有</span>：菁英禁言群分享重大金融新聞，每週三篇金融新聞報告</td><td><span class="y">有</span>：AI 資訊站提供總經日曆、利率數據</td><td class="ours"><span class="n">沒有</span></td></tr>
+          <tr><td>官方 VIP 手續費減免<br><small class="cellnote">透過交易所官方 VIP 減免手續費機制刺激交易額</small></td><td><span class="y">有</span>：在菁英班公告</td><td>未觀察到</td><td class="ours"><span class="n">沒有</span></td></tr>
+          <tr><td>官方帳號 VIP 專區</td><td><span class="y">有</span>：小助手專區直接列門檻、350 人額滿排隊</td><td><span class="y">有</span>：設置 VIP 專區，說明入 VIP 需入金 300U</td><td class="ours"><span class="n">沒有</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2 id="tiers">提案後：每一層開放什麼</h2>
+      <p class="note">由左到右越往上層，能用的資訊、工具、課程越多。<span class="newmark">新</span>＝目前沒有、提案新增；<span class="tbd">待定</span>＝請老闆決定。表格可左右滑動。</p>
+    </div>
+    <div class="tablebox">
+      <table class="tiers">
+        <thead><tr><th></th>
+          <th style="--c:var(--ppl)">一階<small>免費</small></th>
+          <th style="--c:var(--kb)">二階 VIP<small>入金 300U</small></th>
+          <th style="--c:var(--bs)">P Club<small>30 日 500 萬</small></th>
+          <th style="--c:var(--dec)">尊榮<small>規劃中</small></th></tr></thead>
+        <tbody>
+          <tr><th>怎麼進入</th><td>加入大廳群</td><td>入金 300U</td>
+            <td>30 日交易額 500 萬<br>或入金 5,000U<span class="newmark">新</span>，7 天體驗內交易額達標才留下<span class="tbd">待定</span></td>
+            <td>資產 10,000U 以上</td></tr>
+          <tr><th>怎麼留下</th><td>—</td><td>—</td>
+            <td>限額<span class="newmark">新</span><span class="tbd">席次待定</span><br>每月 30 日交易額達標續留<span class="newmark">新</span><span class="tbd">門檻待定</span></td>
+            <td>規劃中</td></tr>
+          <tr class="focus"><th>資訊網站<small>籌備中，依交易額綁定</small></th><td colspan="4"><div class="volsteps"><span>基礎資訊<small>所有人</small></span><i>→</i><span>進階資訊<small>30 日交易額達門檻</small></span><i>→</i><span>深度資訊<small>30 日交易額達更高門檻</small></span><i>→</i><span>全部資訊<small>30 日交易額達最高門檻</small></span></div><p class="volnote">不看層級，只看 30 日交易額<span class="newmark">新</span><span class="tbd">門檻待定</span>。</p></td></tr>
+          <tr class="focus"><th>指標、策略訊號<small>依交易額綁定</small></th><td colspan="4"><div class="volsteps"><span>基礎功能<small>所有人</small></span><i>→</i><span>進階功能<small>30 日交易額達門檻</small></span><i>→</i><span>深度功能<small>30 日交易額達更高門檻</small></span><i>→</i><span>全部功能<small>30 日交易額達最高門檻</small></span></div><p class="volnote">不看層級，只看 30 日交易額<span class="newmark">新</span><span class="tbd">門檻待定</span>。門檻可參考四個分段：50 萬／100 萬／500 萬。</p></td></tr>
+          <tr class="focus"><th>課程</th><td>新手班</td><td>新手班<br>＋進階課程依交易額解鎖<span class="newmark">新</span><span class="tbd">門檻待定</span></td><td>全部課程</td><td>全部課程</td></tr>
+          <tr><th>社群定位<small>公告與記事本</small></th><td>交流大廳：新手教學、資訊分享<span class="newmark">新</span></td><td>技術分析底層邏輯教學<span class="newmark">新</span></td><td>實戰交流、盤面分析，以及金融新聞、利率數據分析<span class="newmark">新</span><br><small class="cellnote">基礎不足請回二階 VIP 學習</small></td><td>同 P Club</td></tr>
+          <tr><th>BingX 合約手續費</th><td>一般費率</td><td>Elite<span class="newmark">新</span><br><small class="cellnote">掛單、吃單各減 10%</small></td><td>VIP1～VIP4<span class="newmark">新</span><br><small class="cellnote">掛單減 30–60%、吃單減 20–37%</small></td><td>同 P Club</td></tr>
+          <tr><th>1v1 交易健檢</th><td>—</td><td>—</td><td>入會送一次<span class="newmark">新</span></td><td>每月一次<span class="newmark">新</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sec-head" style="margin-top:8px">
+      <h3>網站資訊和工具的開放條件</h3>
+      <p class="note">「資訊網站」「指標、策略訊號」「課程」都依 30 日交易額分階段開放。</p>
+    </div>
+    <div class="ways">
+      <div class="way"><h3>依 30 日交易額開放</h3>
+        <p>每個功能直接設交易額門檻，可對應四個分段：50 萬、100 萬、500 萬。</p>
+        <ul><li>直接刺激交易，和競品作法一樣（龍幣盈深度資訊需交易額 1 萬）</li><li>以目前數據，各門檻可解鎖人數：50 萬以上 <span class="num">298</span>、100 萬以上 <span class="num">160</span>、500 萬以上 <span class="num">40</span> 人</li></ul></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2 id="proposals">8 項提案</h2><p class="note">每項都列出競品怎麼做、為什麼要加、具體方案，以及需要老闆決定的地方。</p></div>
+    <div class="props">
+
+      <article class="prop" id="p1"><div class="no">1</div><h3>P Club 限額、淘汰、續留門檻，並開放入金直通</h3>
+        <div class="body">
+          <div class="blk"><h4>競品做法</h4><p>酷幣盈菁英班限 350 人、每週日踢人補邀；入會 100 萬，續留 70 萬交易額。</p></div>
+          <div class="blk"><h4>為什麼要加</h4><p>P Club 現在進去後沒有續留壓力，也沒有稀缺感。限額加淘汰能讓會員每月維持交易量，也讓外面的人有想擠進來的動力。</p></div>
+          <div class="blk plan"><h4>具體方案</h4><ul><li>P Club 設席次上限，每月淘汰未達標的人</li><li>每月審核 30 日交易額決定續留</li><li>新增入口：入金達 5,000U 可直接入群（搭配提案 2 的體驗期）</li></ul></div>
+          <div class="blk"><h4>數據依據</h4><p>目前 500 萬以上 40 人，全部已是 P Club 會員；100 萬–500 萬 120 人，是補位與競爭的來源。</p></div>
+        </div>
+        <div class="decide"><b>請決定：</b>席次上限（例如 60 或 100 席）、每月續留的 30 日交易額門檻（例如 300 萬或維持 500 萬）、多久審核淘汰一次。</div>
+      </article>
+
+      <article class="prop" id="p2"><div class="no">2</div><h3>入金 5,000U 直通者，先給 7 天體驗</h3>
+        <div class="body">
+          <div class="blk"><h4>競品做法</h4><p>酷幣盈第一次加入菁英班先體驗 7 天，7 日內達到 5 萬交易額才可續留。</p></div>
+          <div class="blk"><h4>為什麼要加</h4><p>只靠入金進來的人不一定會交易。體驗期讓他先感受 P Club 的服務，再用交易額目標確認他是真正的活躍大戶。</p></div>
+          <div class="blk plan"><h4>具體方案</h4><ul><li>對象：單純入金 5,000U、交易額未達 500 萬而進 P Club 的人</li><li>入群後 7 天體驗，期滿檢查交易額</li><li>達標轉正式會員，未達標退出</li></ul></div>
+          <div class="blk"><h4>數據依據</h4><p>7 天 100 萬約等於 30 天 430 萬的節奏，接近入會門檻；7 天 50 萬約等於 30 天 215 萬。</p></div>
+          <div class="blk" style="grid-column:1/-1"><h4>帳上資產 5,000U 以上的會員</h4>
+            <ul><li>現在（11/09）帳上資產 5,000U 以上：<b>19 人</b>，佔總資產 <b>90.6%</b></li>
+              <li>近 30 天內任一天帳上資產 5,000U 以上：<b>37 人</b></li></ul>
+          </div>
+        </div>
+        <div class="decide"><b>請決定：</b>7 天內要達到的交易額（例如 50 萬或 100 萬）。</div>
+      </article>
+
+      <article class="prop" id="p3"><div class="no">3</div><h3>1v1 交易健檢</h3>
+        <div class="body">
+          <div class="blk"><h4>競品做法</h4><p>酷幣盈菁英交易室入群即預約當週一次免費線上健檢，學員帶上 30 日盈虧日曆。</p></div>
+          <div class="blk"><h4>為什麼要加</h4><p>一對一服務直接建立關係，健檢過程也會帶出交易計畫，比群組廣播更能推動大戶持續交易。</p></div>
+          <div class="blk plan"><h4>具體方案</h4><ul><li>P Club 入會送一次 1v1 健檢（帶 30 日盈虧日曆）</li><li>資產 10,000U 以上大戶，每月享有一次</li></ul></div>
+          <div class="blk"><h4>數據依據</h4><p>資產 10,000U 以上的大戶約 <b>10 人</b>，每月 1v1 健檢約 10 場：</p><ul><li><b>30 日</b>（11/02 資產快照）：10 人，合計資產 59.5 萬 U，30 日交易額合計 1.00 億（佔會員 30 日交易額 15.8%）</li><li><b>90 日</b>（8–10 月平均資產）：10 人，平均資產合計 76.0 萬 U，三個月交易額合計 6.64 億（佔會員三個月交易額 25.5%）</li></ul></div>
+        </div>
+        <div class="decide"><b>請決定：</b>由誰負責健檢（老師或交易員），以及每月可承接的場次。</div>
+      </article>
+
+      <article class="prop" id="p4"><div class="no">4</div><h3>進階課程依交易額分級解鎖</h3>
+        <div class="body">
+          <div class="blk"><h4>競品做法</h4><p>酷幣盈獵手高階班需 30 日交易額 30 萬（菁英的第三階段課程）；龍幣盈龍家軍核心班需交易額 1,000U（龍幣盈的第三階段課程）。</p></div>
+          <div class="blk"><h4>為什麼要加</h4><p>我們的課程品質是強項，但現在沒有和交易額掛鉤。把好課放在交易額門檻後面，課程就變成刺激交易的誘因。</p></div>
+          <div class="blk plan"><h4>具體方案</h4><ul><li>新手班維持免費</li><li>進階課程依 30 日交易額分級解鎖</li></ul></div>
+          <div class="blk"><h4>數據依據</h4><p>可對應的人數：10 萬以上 793 人、30 萬以上 421 人、100 萬以上 160 人、500 萬以上 40 人。</p></div>
+        </div>
+        <div class="decide"><b>請決定：</b>分幾級、每級門檻（例如 10 萬／100 萬／500 萬三級，或 30 萬／100 萬兩級）、哪些課程放在哪一級。</div>
+      </article>
+
+      <article class="prop" id="p5"><div class="no">5</div><h3>官方 LINE 設 P Club 專區</h3>
+        <div class="body">
+          <div class="blk"><h4>競品做法</h4><p>酷幣盈小助手設 VIP 專區：主打加密、美股、大宗商品，線上線下都有，上限 350 人、額滿排隊，私訊直接給進入門檻。龍幣盈官方帳號也設有 VIP 專區，說明入 VIP 需入金 300U。</p></div>
+          <div class="blk"><h4>為什麼要加</h4><p>想升級的人現在要自己問才知道門檻。專區把門檻、權益、剩餘名額攤開，搭配提案 1 的限額，做出想排隊的需求感。</p></div>
+          <div class="blk plan"><h4>具體方案</h4><ul><li>官方 LINE 圖文選單新增 P Club 專區</li><li>列出入會門檻、權益</li><li><b>特別說明可做「加密貨幣、美股」，將開口做到最大</b><br><small class="cellnote">備註：不確定黃金等大宗商品在宣傳上是否會觸犯法規</small></li><li>一定公開顯示剩餘名額，額滿就排隊</li></ul></div>
+          <div class="blk"><h4>數據依據</h4><p>專區上線後，可優先推給還不是 P Club 會員的 100 萬以上 85 人與 50 萬–500 萬的 258 人。</p></div>
+        </div>
+      </article>
+
+      <article class="prop" id="p6"><div class="no">6</div><h3>工具與資訊分三層開放</h3>
+        <div class="body">
+          <div class="blk"><h4>競品做法</h4><p>龍幣盈的 AI 資訊站（加密資訊、總經日曆、利率、90 天數據）公開給 VIP，行情雷達、鏈上鯨魚、AI 訊號需交易額 1 萬以上才解鎖。</p></div>
+          <div class="blk"><h4>為什麼要加</h4><p>軟體服務是我們的強項，但現在沒有和交易額連動。分層開放讓工具同時是服務，也是升級誘因。</p></div>
+          <div class="blk plan"><h4>具體方案</h4><ul><li>基礎：所有人都可以看</li><li>進階、深度、全部功能：依 30 日交易額分階段解鎖</li><li>解鎖後需每個月維持交易額才能續用</li><li>可分層的工具：自家指標、交易策略／訊號、線上課程平台、資訊網站（正在開始做）</li></ul></div>
+          <div class="blk"><h4>數據依據</h4><p>資訊網站正在規劃，正好可以在上線時就把三層權限設計進去。</p></div>
+        </div>
+        <div class="decide"><b>請決定：</b>資訊網站需要架構哪些資訊，如何分級。</div>
+      </article>
+      <article class="prop" id="p7"><div class="no">7</div><h3>P Club 社群內的吸引力，各社群定位分工</h3>
+        <div class="body">
+          <div class="blk"><h4>競品做法</h4><p>酷幣盈菁英禁言群分享重大金融新聞，並開始每週三篇金融新聞報告。</p></div>
+          <div class="blk"><h4>為什麼要加</h4><p>讓學員覺得 P Club 社群有價值。P Club 裡有專屬的金融新聞、利率數據分析和實戰盤面交流，是其他層級看不到的，會員會覺得進來值得、願意留下；還沒進來的人，從各社群公告看到 P Club 在做什麼，也會想往上衝。</p></div>
+          <div class="blk plan"><h4>具體方案</h4><ul><li>P Club 提供金融新聞、利率數據分析</li><li>在各社群的公告與記事本寫明定位：</li></ul>
+            <table class="mini"><tbody>
+              <tr><th>交流大廳</th><td>新手教學、資訊分享</td></tr>
+              <tr><th>二階 VIP</th><td>技術分析底層邏輯教學</td></tr>
+              <tr><th>P Club</th><td>實戰交流、盤面分析為主（基礎不足請回二階 VIP 學習）</td></tr>
+            </tbody></table></div>
+        </div>
+      </article>
+
+      <article class="prop" id="p8"><div class="no">8</div><h3>BingX 合約手續費減免，刺激交易額</h3>
+        <div class="body">
+          <div class="blk"><h4>為什麼要加</h4><p><b>手續費是非常多學員在乎的問題。</b>把每一層能拿到的 BingX VIP 等級和減免幅度公開出來，學員為了減免手續費，就會主動提高交易額、往上升級。</p></div>
+          <div class="blk plan"><h4>具體方案</h4><ul><li>二階 VIP：給 BingX Elite</li><li>P Club：給 BingX VIP1～VIP4</li><li><b>放在各社群公告或記事本</b>：列出各層級的手續費等級、減免幅度和每月可以省多少，讓學員看得到升級的好處</li></ul></div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2 id="notices">學員公告範例</h2><p class="note">提案 7、8 的內容，放在各社群的公告或記事本。按「複製」可以直接貼到 LINE。</p></div>
+    <div class="notices">
+      <div class="notice"><div class="nh"><span class="ng">交流大廳</span><h3>交流大廳公告範例</h3><button type="button" class="copy" data-t="n0">複製</button></div>
+        <pre id="n0">📌 各社群定位
+
+交流大廳：新手教學、資訊分享
+二階 VIP：技術分析底層邏輯教學
+P Club：實戰交流、盤面分析為主</pre></div>
+      <div class="notice"><div class="nh"><span class="ng">二階 VIP</span><h3>二階 VIP 公告範例</h3><button type="button" class="copy" data-t="n1">複製</button></div>
+        <pre id="n1">📌 社群定位
+
+二階 VIP：技術分析底層邏輯教學
+P Club：以實戰交流、盤面分析為主
+
+💰 BingX VIP 手續費減免福利
+Elite：30 日合約交易額達 500 萬 U，市價進場手續費省 10%
+
+減免制度：https://bingx.com/zh-tc/vip/introduction</pre></div>
+      <div class="notice"><div class="nh"><span class="ng">P Club</span><h3>P Club 公告範例</h3><button type="button" class="copy" data-t="n2">複製</button></div>
+        <pre id="n2">📌 P Club 社群以實戰交流、盤面分析為主
+（基礎不足請回二階 VIP 學習）
+
+💰 BingX VIP 手續費減免福利
+VIP1：30 日合約交易額達 1,000 萬 U，市價進場手續費省 20%
+VIP2：30 日合約交易額達 2,000 萬 U，市價進場手續費省 25%
+VIP3：30 日合約交易額達 5,000 萬 U，市價進場手續費省 30%
+VIP4：30 日合約交易額達 1 億 U，市價進場手續費省 37%
+
+減免制度：https://bingx.com/zh-tc/vip/introduction</pre></div>
+    </div>
+    <p class="obs-note"><b>注意：</b>P Club 公告裡的 VIP1～VIP4 門檻用的是 BingX 原本的門檻。省幾 % 是和一般用戶的市價進場（吃單）費率 0.0500% 比較。</p>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2 id="decisions">老闆決策清單</h2></div>
+    <div class="tablebox">
+      <table class="decisions">
+        <thead><tr><th>#</th><th>針對哪個部分</th><th>要決定的事</th><th>可選方案</th><th>參考數據</th></tr></thead>
+        <tbody>
+          <tr><td>1-a</td><td class="part">提案 1｜P Club 限額</td><td>P Club 席次上限</td><td>60 席／100 席／其他</td><td>500 萬以上：40 人<br>100 萬–500 萬：120 人</td></tr>
+          <tr><td>1-b</td><td class="part">提案 1｜P Club 續留</td><td>P Club 每月續留門檻（30 日交易額）</td><td>300 萬／維持 500 萬／其他</td><td>酷幣盈菁英班續留約為入會門檻的 70%</td></tr>
+          <tr><td>1-c</td><td class="part">提案 1｜P Club 淘汰</td><td>P Club 多久審核、淘汰一次</td><td>每週／每月</td><td>酷幣盈菁英班每週日踢人補邀</td></tr>
+          <tr><td>2</td><td class="part">提案 2｜P Club 7 天體驗</td><td>入金 5,000U 直接進 P Club 的人，7 天體驗內要達到多少交易額才能留下</td><td>50 萬／100 萬／其他</td><td>7 天 100 萬 ≈ 30 天 430 萬<br>帳上資產 5,000U 以上：19 人</td></tr>
+          <tr><td>3</td><td class="part">提案 3｜1v1 交易健檢</td><td>P Club 入會健檢與尊榮大戶每月健檢，由誰負責、每月排幾場</td><td>老師／交易員</td><td>資產 10,000U 以上約 10 人，每月約 10 場</td></tr>
+          <tr><td>4</td><td class="part">提案 4｜進階課程</td><td>進階課程分幾級、每級的 30 日交易額門檻</td><td>三級：10 萬／100 萬／500 萬<br>兩級：30 萬／100 萬</td><td>10 萬以上：793 人<br>30 萬以上：421 人<br>100 萬以上：160 人<br>500 萬以上：40 人</td></tr>
+          <tr><td>6-a</td><td class="part">提案 6｜資訊網站、指標與策略訊號</td><td>各解鎖階段的 30 日交易額門檻</td><td>參考四個分段：50 萬／100 萬／500 萬</td><td>50 萬以上：298 人<br>100 萬以上：160 人<br>500 萬以上：40 人</td></tr>
+          <tr><td>6-b</td><td class="part">提案 6｜資訊網站</td><td>資訊網站需要架構哪些資訊，如何分級</td><td>每項工具逐一決定</td><td>資訊網站籌備中，可在上線時一起設定</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <b>數據口徑</b>
+    <ul>
+      <li>交易額為 daily_volumes 實際成交加總，不是會員月審用的 snapshots.volume_30d，兩者會有落差。</li>
+      <li>大戶手續費佔比低於交易額佔比（500 萬以上：交易額 55.1%、手續費 46.0%），交易額不能直接換算收入。</li>
+      <li>是不是 P Club 會員，以系統會員資料 169 筆為準。競品資料為入群觀察，以觀察當下為準。</li>
+    </ul>
+  </footer>
+</div>
+
+<script>
+const D=[['1,000 以下',688,21.9,0.02],['1,000–1 萬',733,23.3,0.27],['1 萬–10 萬',932,29.6,3.3],['10 萬–30 萬',372,11.8,5.8],
+ ['30 萬–50 萬',123,3.9,4.1],['50 萬–100 萬',138,4.4,8.5,1],['100 萬–500 萬',120,3.8,23.0,1],['500 萬以上',40,1.3,55.1]];
+const M=60,el=document.getElementById('dist');
+el.insertAdjacentHTML('beforeend',D.map(([l,n,p,v,hot])=>`<div class="drow${hot?' hot':''}"><div class="lab">${l}<small>${n.toLocaleString('zh-TW')} 人</small></div>
+ <div class="pair"><div class="b p"><i style="width:${p/M*100}%"></i>${p}%</div><div class="b v"><i style="width:${v/M*100}%"></i>${v}%</div></div></div>`).join(''));
+
+document.addEventListener('click',e=>{const b=e.target.closest('.copy');if(!b)return;const el=document.getElementById(b.dataset.t);
+  const done=()=>{b.textContent='已複製';setTimeout(()=>b.textContent='複製',1500)};
+  const sel=()=>{const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent='已選取，請按複製'};
+  try{navigator.clipboard.writeText(el.textContent).then(done,sel)}catch(_){sel()}});
+</script>
+
+</body>
+</html>
